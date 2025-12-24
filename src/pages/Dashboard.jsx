@@ -1,28 +1,36 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { setTransactions, addTransaction, deleteTransaction, setLastDeleted, clearLastDeleted } from '../features/transactions/transactionSlice';
+import { setTransactions, addTransaction, setLastDeleted, clearLastDeleted } from '../features/transactions/transactionSlice';
 import Navbar from '../components/Layout/Navbar';
 import TransactionForm from '../components/Transactions/TransactionForm';
+import BudgetForm from '../components/Transactions/BudgetForm'; 
 import MonthlyTrendChart from '../components/Charts/MonthlyTrendChart';
 import CategoryPieChart from '../components/Charts/CategoryPieChart';
+import BudgetChart from '../components/Charts/BudgetChart'; 
 import Button from '../components/UI/Button';
-import { Plus, Download, Upload, Trash2, Edit, Undo2, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { Download, Upload, Trash2, Edit, Undo2, Search, ChevronLeft, ChevronRight, ArrowUpDown, Wallet, AlertTriangle } from 'lucide-react';
 import { exportToCSV } from '../utils/exportUtils';
 import useDebounce from '../hooks/useDebounce';
 import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
+import { toast } from 'react-toastify';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const { items, lastDeletedTransaction } = useSelector(state => state.transactions);
 
+  // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBudgetFormOpen, setIsBudgetFormOpen] = useState(false); 
   const [formType, setFormType] = useState('expense');
   const fileInputRef = useRef(null);
   
+  // Data States
+  const [budgets, setBudgets] = useState([]); 
 
   // Filter & Sort States
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,12 +43,13 @@ const Dashboard = () => {
   const itemsPerPage = 10;
 
   const [editingTransaction, setEditingTransaction] = useState(null);
+  
   const handleEditClick = (transaction) => {
-  setEditingTransaction(transaction); // Store the item data
-  setIsFormOpen(true);                // Open the modal
-};
+    setEditingTransaction(transaction); 
+    setIsFormOpen(true);                
+  };
 
-  // Real-time listener
+  //  listener for TRANSACTIONS 
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -55,62 +64,87 @@ const Dashboard = () => {
     return () => unsubscribe();
   }, [user, dispatch]);
 
-  // --- Logic: Filtering & Sorting ---
+  //  listener for BUDGETS 
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'budgets'), where('uid', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const budgetList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBudgets(budgetList);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  //  Process Budget vs Actual Data 
+  const calculateBudgetProgress = () => {
+    const spendingByCategory = items
+      .filter(item => item.type === 'expense')
+      .reduce((acc, curr) => {
+        const cat = (curr.category || 'Uncategorized').toLowerCase().trim();
+        acc[cat] = (acc[cat] || 0) + parseFloat(curr.amount);
+        return acc;
+      }, {});
+
+    return budgets.map(b => {
+      const budgetCatKey = (b.category || '').toLowerCase().trim();
+      const spent = spendingByCategory[budgetCatKey] || 0;
+      const percentage = b.limit > 0 ? (spent / b.limit) * 100 : 0;
+      return {
+        ...b,
+        spent,
+        remaining: b.limit - spent,
+        percentage,
+        isOverBudget: spent > b.limit,
+        isNearLimit: percentage >= 80 && spent <= b.limit 
+      };
+    });
+  };
+
+  const budgetMetrics = calculateBudgetProgress();
+
+  //  Filtering & Sorting
   let processedItems = items.filter(item => {
-    // 1. Text Search
     const matchesSearch = 
       item.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
       item.description.toLowerCase().includes(debouncedSearch.toLowerCase());
-    
-    // 2. Type Dropdown Filter
     const matchesType = filterType === 'all' || item.type === filterType;
-
     return matchesSearch && matchesType;
   });
 
-  // 3. Sorting
   if (sortConfig.key) {
     processedItems.sort((a, b) => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
-
-      // Convert to numbers for amount
       if (sortConfig.key === 'amount') {
         aValue = parseFloat(aValue);
         bValue = parseFloat(bValue);
       }
-      
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
   }
 
-  // --- Logic: Pagination ---
+  //  Pagination ---
   const totalPages = Math.ceil(processedItems.length / itemsPerPage);
   const paginatedItems = processedItems.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, filterType, sortConfig]);
 
-
-  // --- Logic: Import CSV ---
+  //  Import/Undo ---
   const handleImportClick = () => fileInputRef.current?.click();
-  
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        // Expected CSV headers: name, description, amount, date, type, category
         results.data.forEach(row => {
           if (row.name && row.amount && row.date) {
              dispatch(addTransaction({
@@ -119,7 +153,7 @@ const Dashboard = () => {
                  description: row.description || '',
                  amount: row.amount,
                  date: row.date,
-                 type: row.type || 'expense', // default to expense if missing
+                 type: row.type || 'expense', 
                  category: row.category || 'General'
                },
                uid: user.uid
@@ -130,18 +164,15 @@ const Dashboard = () => {
     });
   };
 
-  // --- Logic: Undo/Redo ---
   const handleDelete = async (itemId) => {
     const itemToDelete = items.find(item => item.id === itemId);
     dispatch(setLastDeleted(itemToDelete));
-    
     try {
       await deleteDoc(doc(db, 'transactions', itemId));
-      toast.info("Transaction deleted"); // 👈 Info toast
+      toast.info("Transaction deleted"); 
     } catch (error) {
       toast.error("Could not delete item");
     }
-    
     setTimeout(() => dispatch(clearLastDeleted()), 10000);
   };
 
@@ -160,14 +191,14 @@ const Dashboard = () => {
   const currentBalance = totalIncome - totalExpense;
 
   return (
-    
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
       <Navbar />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Top Cards Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Card 1: Balance */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border-4 border-indigo-500">
             <p className="text-gray-500 dark:text-gray-400 text-sm">Current Balance</p>
             <h2 className={`text-3xl font-bold mt-2 ${currentBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -175,6 +206,7 @@ const Dashboard = () => {
             </h2>
           </motion.div>
 
+          {/* Card 2: Income */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border-4 border-green-500 flex flex-col justify-between">
             <div>
               <p className="text-gray-500 dark:text-gray-400 text-sm">Total Income</p>
@@ -185,6 +217,7 @@ const Dashboard = () => {
             </Button>
           </motion.div>
 
+          {/* Card 3: Expense */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border-4 border-red-500 flex flex-col justify-between">
             <div>
               <p className="text-gray-500 dark:text-gray-400 text-sm">Total Expenses</p>
@@ -194,7 +227,72 @@ const Dashboard = () => {
              Add Expense
             </Button>
           </motion.div>
+
+          {/* Card 4: Budget Manager */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border-4 border-purple-500 flex flex-col justify-between">
+            <div>
+              <p className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-2">
+                 <Wallet size={16} /> Budget Manager
+              </p>
+              <h2 className="text-xl font-bold text-purple-600 dark:text-purple-400 mt-2">
+                {budgets.length} Category Limits
+              </h2>
+            </div>
+            <Button onClick={() => setIsBudgetFormOpen(true)} variant="secondary" className="mt-4 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300">
+               Set Budget
+            </Button>
+          </motion.div>
         </div>
+
+        {/* Budget Progress Section (WITH WARNING LOGIC) */}
+        {budgets.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+             {/* 1. Bar Chart: Actual vs Budget */}
+             <BudgetChart data={budgetMetrics} />
+
+             {/* 2. Progress Bars */}
+             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-y-auto max-h-[380px]">
+                <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Budget Progress</h3>
+                <div className="space-y-6">
+                  {budgetMetrics.map((b) => (
+                    <div key={b.id}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium dark:text-white">{b.category}</span>
+                        <span className={`font-medium ${b.isOverBudget ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                          ${b.spent.toFixed(0)} / ${b.limit.toFixed(0)}
+                        </span>
+                      </div>
+                      <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(b.percentage, 100)}%` }}
+                          transition={{ duration: 1 }}
+                          className={`h-full rounded-full ${
+                            b.isOverBudget ? 'bg-red-500' : 
+                            b.isNearLimit ? 'bg-orange-500' : 'bg-green-500'
+                          }`}
+                        />
+                      </div>
+                      
+                      {/* Warning for 80% - 100% usage */}
+                      {b.isNearLimit && (
+                        <p className="text-xs text-orange-500 mt-1 flex items-center gap-1 font-medium italic">
+                          <AlertTriangle size={12} /> Warning: You are close to your budget limit!
+                        </p>
+                      )}
+
+                      {/* Error for 100%+ usage */}
+                      {b.isOverBudget && (
+                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-bold">
+                          <AlertTriangle size={12} /> Danger: Over budget by ${(b.spent - b.limit).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+             </div>
+          </div>
+        )}
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -204,7 +302,6 @@ const Dashboard = () => {
 
         {/* Advanced Filter Toolbar */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-           {/* Left: Import/Export */}
            <div className="flex gap-2 w-full md:w-auto">
              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
              <Button variant="secondary" onClick={handleImportClick} className="flex items-center gap-2 text-sm">
@@ -218,12 +315,8 @@ const Dashboard = () => {
 
         {/* Transactions Table Section */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
-          
-          {/* Table Header Controls */}
           <div className="p-4 border-b border-gray-100 dark:border-slate-700 space-y-4">
             <div className="flex flex-col md:flex-row gap-4 justify-between">
-              
-              {/* Search + Filter Group */}
               <div className="flex flex-1 gap-2">
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -245,15 +338,13 @@ const Dashboard = () => {
                   <option value="expense">Expense</option>
                 </select>
               </div>
-
-              {/* Sorting Group */}
               <div className="flex gap-2 items-center text-sm text-gray-600 dark:text-gray-300">
                 <span className="hidden sm:inline">Sort by:</span>
                 <button 
-                  onClick={() => setSortConfig({ key: null })}
+                  onClick={() => setSortConfig({ key: 'category', direction: sortConfig.key === 'category' && sortConfig.direction === 'desc' ? 'asc' : 'desc'   })}
                   className={`px-3 py-1.5 rounded-md border transition-colors ${!sortConfig.key ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'hover:bg-gray-100 dark:hover:bg-slate-700 border-transparent'}`}
                 >
-                  None
+                  Category
                 </button>
                 <button 
                   onClick={() => setSortConfig({ key: 'date', direction: sortConfig.key === 'date' && sortConfig.direction === 'desc' ? 'asc' : 'desc' })}
@@ -271,13 +362,12 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Table Content */}
           <div className="overflow-x-auto border-2 border-indigo-100">
             <table className="w-full text-left ">
               <thead className="bg-gray-50 dark:bg-slate-700/50  text-gray-600 dark:text-gray-300 text-xs uppercase">
                 <tr>
                   <th className="px-6 py-3">Name</th>
-                  <th className="px-6 py-3">Description</th>
+                  <th className="px-6 py-3">Category</th>
                   <th className="px-6 py-3">Type</th>
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3 text-right">Amount</th>
@@ -288,7 +378,7 @@ const Dashboard = () => {
                 {paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{item.name}</td>
-                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-sm max-w-xs truncate">{item.description}</td>
+                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-sm max-w-xs truncate">{item.category}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full font-medium border ${item.type === 'income' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800' : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'}`}>
                         {item.type}
@@ -328,7 +418,6 @@ const Dashboard = () => {
             </table>
           </div>
 
-          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
               <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -356,7 +445,10 @@ const Dashboard = () => {
       </main>
 
       {/* Forms & Notifications */}
-      {isFormOpen && <TransactionForm onClose={() => setIsFormOpen(false)} type={formType} />}
+      {isFormOpen && <TransactionForm onClose={() => setIsFormOpen(false)} type={formType} transaction={editingTransaction} />}
+      
+      {/* Budget Form Modal */}
+      {isBudgetFormOpen && <BudgetForm onClose={() => setIsBudgetFormOpen(false)} />}
 
       <AnimatePresence>
         {lastDeletedTransaction && (

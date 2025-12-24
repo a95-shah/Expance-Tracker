@@ -9,46 +9,61 @@ import Modal from '../UI/Modal';
 
 const TransactionForm = ({ onClose, type }) => { 
   const [formData, setFormData] = useState({ 
-    name: '', description: '', amount: '', 
+    name: '', 
+    description: '', 
+    amount: '', 
     category: type === 'expense' ? '' : 'Income', 
     date: new Date().toISOString().split('T')[0] 
   });
+  
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
 
-
-  const handleSubmit = async (e) => { 
+const handleSubmit = (e) => { 
     e.preventDefault();
-    if (!formData.name || !formData.amount) return;
+
+    const isInvalidIncome = type === 'income' && !formData.name;
+    const isInvalidExpense = type === 'expense' && !formData.category;
     
-    try {
-      await dispatch(addTransaction({ transaction: { ...formData, type }, uid: user.uid })).unwrap();
-      toast.success(`${type === 'income' ? 'Income' : 'Expense'} added successfully!`);
-      onClose();
-    } catch (error) {
-      toast.error("Failed to save transaction.");
+    if (isInvalidIncome || isInvalidExpense || !formData.amount) {
+      toast.error("Please fill in all required fields");
+      return;
     }
+
+    const finalData = {
+      ...formData,
+      type,
+      name: type === 'expense' ? formData.category : formData.name,
+      description: "" 
+    };
+
+    onClose();
+
+    dispatch(addTransaction({ transaction: finalData, uid: user.uid }))
+      .unwrap()
+      .then(() => {
+        toast.success(`${type === 'income' ? 'Income' : 'Expense'} added successfully!`);
+      })
+      .catch((error) => {
+        console.error(error);
+        toast.error("Failed to save transaction.");
+      });
   };
 
   return (
     <Modal isOpen={true} onClose={onClose} title={`Add ${type === 'income' ? 'Income' : 'Expense'}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        
-        <Input 
-          label="Name"
-          placeholder="e.g. Salary or Coffee"
-          value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
-          required
-        />
 
-        <Input 
-          label="Description (Optional)"
-          placeholder="Detailed notes"
-          value={formData.description}
-          onChange={(e) => setFormData({...formData, description: e.target.value})}
-        />
-        
+        {type === 'income' && (
+          <Input 
+            label="Name"
+            placeholder="e.g. Salary, Freelance, Bonus"
+            value={formData.name}
+            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            required
+          />
+        )}
+
         <Input 
           label="Amount ($)"
           type="number"
@@ -60,18 +75,23 @@ const TransactionForm = ({ onClose, type }) => {
         
         {type === 'expense' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category (Type to create)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Category
+            </label>
             <input 
               list="categories"
               className="w-full px-4 py-2.5 rounded-lg border outline-none bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white"
               value={formData.category}
               onChange={(e) => setFormData({...formData, category: e.target.value})}
               placeholder="e.g. Food, Travel"
+              required
             />
             <datalist id="categories">
               <option value="Food" />
               <option value="Transport" />
               <option value="Utilities" />
+              <option value="Entertainment" />
+              <option value="Shopping" />
             </datalist>
           </div>
         )}
@@ -84,7 +104,9 @@ const TransactionForm = ({ onClose, type }) => {
           required
         />
 
-        <Button type="submit" className="w-full mt-4">Save Transaction</Button>
+        <Button type="submit" className="w-full mt-4">
+          Save {type === 'income' ? 'Income' : 'Expense'}
+        </Button>
       </form>
     </Modal>
   );

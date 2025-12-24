@@ -51,29 +51,28 @@ const AuthPage = () => {
   const onSubmit = async (data) => {
     setAuthError('');
     const { email, password, firstName, lastName } = data;
-    const fullName = `${firstName} ${lastName}`.trim();
+    const formName = !isLogin ? `${firstName} ${lastName}`.trim() : '';
 
     try {
     let userCredential;
-    
+    let displayNameToSave;
     if (isLogin) {
       userCredential = await signInWithEmailAndPassword(auth, email, password);
       toast.success(`Welcome back!`);
     } else {
       userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // 3. Save that combined name to Firebase
-      if (fullName) {
-        await updateProfile(userCredential.user, { displayName: fullName });
+      if (formName) {
+        await updateProfile(userCredential.user, { displayName: formName });
       }
-      
+      displayNameToSave = formName;
       toast.success("Account created successfully!");
       }
 
       dispatch(setUser({
       uid: userCredential.user.uid,
       email: userCredential.user.email,
-      displayName: fullName // Use the name we just created
+      displayName: displayNameToSave 
     }));
     
     navigate('/dashboard');

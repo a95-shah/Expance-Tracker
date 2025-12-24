@@ -19,14 +19,20 @@ const Navbar = () => {
     <nav className="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center gap-2">
-            <Wallet className="h-8 w-8 text-indigo-600" />
-            <span className="font-bold text-xl text-gray-900 dark:text-white">Expensify</span>
+          <div className="flex items-center">
+            <img
+              src="/logo.png"
+              alt="Expensify Logo"
+              className="h-20 w-20 object-contain"
+            />
+            <span className="font-bold text-xl text-gray-900 dark:text-white">
+              Expensify
+            </span>
           </div>
           
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:block font-medium">
-              Welcome, 
+              Welcome,  
             <span className="font-bold text-indigo-600 dark:text-indigo-400">
                 {user?.displayName || 'User'}
             </span>
