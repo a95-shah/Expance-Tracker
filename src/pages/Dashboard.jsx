@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc } from 'firebase/firestore';
@@ -45,8 +44,28 @@ const Dashboard = () => {
   const [editingTransaction, setEditingTransaction] = useState(null);
   
   const handleEditClick = (transaction) => {
-    setEditingTransaction(transaction); 
+    setEditingTransaction(transaction);                 
     setIsFormOpen(true);                
+  };
+
+  // --- NEW FUNCTION: Handle Add Expense Logic ---
+  const handleAddExpenseClick = () => {
+    // Check if user has set any budgets yet
+    if (budgets.length === 0) {
+      toast.warn("Please set a budget limit first to add an expense.", {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      return; // Stop here, do not open the form
+    }
+    
+    // If budgets exist, proceed as normal
+    setFormType('expense');
+    setIsFormOpen(true);
   };
 
   //  listener for TRANSACTIONS 
@@ -217,13 +236,14 @@ const Dashboard = () => {
             </Button>
           </motion.div>
 
-          {/* Card 3: Expense */}
+          {/* Card 3: Expense (UPDATED BUTTON) */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border-4 border-red-500 flex flex-col justify-between">
             <div>
               <p className="text-gray-500 dark:text-gray-400 text-sm">Total Expenses</p>
               <h2 className="text-2xl font-bold text-red-500 mt-2">${totalExpense.toFixed(2)}</h2>
             </div>
-            <Button onClick={() => { setFormType('expense'); setIsFormOpen(true); }} variant="secondary" className="mt-4 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
+            {/* Using the new handler here */}
+            <Button onClick={handleAddExpenseClick} variant="secondary" className="mt-4 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">
              Add Expense
             </Button>
           </motion.div>
@@ -300,18 +320,20 @@ const Dashboard = () => {
           <CategoryPieChart data={items.filter(i => i.type === 'expense')} />
         </div>
 
-        {/* Advanced Filter Toolbar */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-           <div className="flex gap-2 w-full md:w-auto">
-             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
-             <Button variant="secondary" onClick={handleImportClick} className="flex items-center gap-2 text-sm">
-               <Upload size={16} /> Import CSV
-             </Button>
-             <Button variant="secondary" onClick={() => exportToCSV(items)} className="flex items-center gap-2 text-sm">
-               <Download size={16} /> Export CSV
-             </Button>
-           </div>
-        </div>
+        {/* Advanced Filter Toolbar (Visible only if there are items) */}
+        {items.length > 0 && (
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+             <div className="flex gap-2 w-full md:w-auto">
+               <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
+               <Button variant="secondary" onClick={handleImportClick} className="flex items-center gap-2 text-sm">
+                 <Upload size={16} /> Import CSV
+               </Button>
+               <Button variant="secondary" onClick={() => exportToCSV(items)} className="flex items-center gap-2 text-sm">
+                 <Download size={16} /> Export CSV
+               </Button>
+             </div>
+          </div>
+        )}
 
         {/* Transactions Table Section */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
@@ -445,7 +467,15 @@ const Dashboard = () => {
       </main>
 
       {/* Forms & Notifications */}
-      {isFormOpen && <TransactionForm onClose={() => setIsFormOpen(false)} type={formType} transaction={editingTransaction} />}
+      {/* UPDATE: Passing 'budgets' so form knows valid categories */}
+      {isFormOpen && (
+        <TransactionForm 
+          onClose={() => setIsFormOpen(false)} 
+          type={formType} 
+          transaction={editingTransaction} 
+          existingBudgets={budgets} 
+        />
+      )}
       
       {/* Budget Form Modal */}
       {isBudgetFormOpen && <BudgetForm onClose={() => setIsBudgetFormOpen(false)} />}

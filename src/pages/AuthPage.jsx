@@ -58,6 +58,7 @@ const AuthPage = () => {
     let displayNameToSave;
     if (isLogin) {
       userCredential = await signInWithEmailAndPassword(auth, email, password);
+      displayNameToSave = userCredential.user.displayName;
       toast.success(`Welcome back!`);
     } else {
       userCredential = await createUserWithEmailAndPassword(auth, email, password);
