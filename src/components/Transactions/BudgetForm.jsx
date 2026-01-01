@@ -107,9 +107,7 @@ const BudgetForm = ({ onClose }) => {
                 maxMenuHeight={250}
                 classNames={{
                     control: () => "bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 rounded-lg",
-                    // --- CHANGED HERE: Added '!' to force the color ---
                     singleValue: () => "!text-gray-900 dark:!text-white", 
-                    // --------------------------------------------------
                     input: () => "text-gray-900 dark:text-white",
                     placeholder: () => "text-gray-500 dark:text-gray-400",
                     menu: () => "!bg-gray-50 dark:!bg-slate-700 shadow-lg border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden",

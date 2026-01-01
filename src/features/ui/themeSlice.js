@@ -20,8 +20,6 @@ const applyTheme = (theme) => {
 const initialState = {
   mode: getInitialTheme(),
 };
-
-// Apply initial theme immediately upon file load
 applyTheme(initialState.mode);
 
 const themeSlice = createSlice({

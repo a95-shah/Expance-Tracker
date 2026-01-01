@@ -18,7 +18,6 @@ const BudgetChart = ({ data }) => {
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
             />
             <Legend />
-            {/* FIX: Changed dataKey from "budget" to "limit" to match dashboard data */}
             <Bar dataKey="limit" name="Budget Limit" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={20} />
             <Bar dataKey="spent" name="Actual Spent" fill="#ec4899" radius={[4, 4, 0, 0]} barSize={20} />
           </BarChart>

@@ -15,8 +15,6 @@ export const addTransaction = createAsyncThunk(
     return { id: docRef.id, ...transaction };
   }
 );
-
-// yahan sa hum na delete funcionality ko component me use karenge undo ke liye
 export const deleteTransaction = createAsyncThunk(
   'transactions/delete',
   async (id) => {
