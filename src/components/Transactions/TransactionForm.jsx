@@ -9,7 +9,6 @@ import Input from '../UI/Input';
 import Modal from '../UI/Modal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import Select from 'react-select';
 
 const TransactionForm = ({ onClose, type, transaction }) => { 
   const [formData, setFormData] = useState({ 
@@ -42,18 +41,6 @@ const TransactionForm = ({ onClose, type, transaction }) => {
       });
     }
   }, [transaction, type]);
-
-  const categoryOptions = [
-    { value: 'Food', label: 'Food' },
-    { value: 'Transport', label: 'Transport' },
-    { value: 'Utilities', label: 'Utilities' },
-    { value: 'Entertainment', label: 'Entertainment' },
-    { value: 'Shopping', label: 'Shopping' },
-    { value: 'Health', label: 'Health' },
-    { value: 'Education', label: 'Education' },
-    { value: 'Housing', label: 'Housing' },
-    { value: 'Other', label: 'Other' },
-  ];
 
   const handleSubmit = async (e) => { 
     e.preventDefault();
@@ -143,55 +130,17 @@ const TransactionForm = ({ onClose, type, transaction }) => {
         </div>
         
         {type === 'expense' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div className="flex flex-col gap-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Category
             </label>
-            <Select
-                options={categoryOptions}
-                value={categoryOptions.find(option => option.value === formData.category)}
-                onChange={(selectedOption) => setFormData({...formData, category: selectedOption.value})}
-                placeholder="Select a category..."
-                menuPosition="fixed"
-                menuPlacement="auto"
-                maxMenuHeight={250}
-                classNames={{
-                    control: () => "bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 rounded-lg",
-                    singleValue: () => "!text-gray-900 dark:!text-white",
-                    input: () => "text-gray-900 dark:text-white",
-                    placeholder: () => "text-gray-500 dark:text-gray-400",
-                    menu: () => "!bg-gray-50 dark:!bg-slate-700 shadow-lg border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden",
-                    menuList: () => "py-1 !bg-gray-50 dark:!bg-slate-700",
-                    option: ({ isFocused, isSelected }) => 
-                        `${isSelected ? "!bg-blue-500 !text-white" : isFocused ? "!bg-gray-200 dark:!bg-slate-600 !text-gray-900 dark:!text-white" : "!text-gray-900 dark:!text-white"} cursor-pointer px-3 py-2`
-                }}
-                styles={{
-                    control: (base) => ({
-                        ...base,
-                        backgroundColor: 'transparent',
-                        minHeight: '42px',
-                        boxShadow: 'none',
-                        '&:hover': { borderColor: '#9ca3af' }
-                    }),
-                    menu: (base) => ({
-                        ...base,
-                        zIndex: 9999,
-                        backgroundColor: 'transparent'
-                    }),
-                    menuList: (base) => ({
-                        ...base,
-                        backgroundColor: 'transparent'
-                    }),
-                    option: (base) => ({
-                        ...base,
-                        backgroundColor: 'transparent'
-                    }),
-                    menuPortal: (base) => ({
-                        ...base,
-                        zIndex: 9999
-                    })
-                }}
-                required
+            <input 
+              type="text" 
+              placeholder="Enter category..."
+              className="w-full px-4 py-2.5 rounded-lg border outline-none bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20"
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+              required
             />
           </div>
         )}

@@ -6,25 +6,12 @@ import { db } from '../../config/firebase';
 import { useSelector } from 'react-redux';
 import Button from '../UI/Button';
 import { toast } from 'react-toastify';
-import Select from 'react-select';
 
 const BudgetForm = ({ onClose }) => {
   const { user } = useSelector(state => state.auth);
   const [category, setCategory] = useState('');
   const [limit, setLimit] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const categoryOptions = [
-    { value: 'Food', label: 'Food' },
-    { value: 'Transport', label: 'Transport' },
-    { value: 'Utilities', label: 'Utilities' },
-    { value: 'Entertainment', label: 'Entertainment' },
-    { value: 'Shopping', label: 'Shopping' },
-    { value: 'Health', label: 'Health' },
-    { value: 'Education', label: 'Education' },
-    { value: 'Housing', label: 'Housing' },
-    { value: 'Other', label: 'Other' },
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -97,50 +84,13 @@ const BudgetForm = ({ onClose }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category Name</label>
-            <Select
-                options={categoryOptions}
-                value={categoryOptions.find(opt => opt.value === category)}
-                onChange={(option) => setCategory(option.value)}
-                placeholder="Select category..."
-                menuPosition="fixed"
-                menuPlacement="auto"
-                maxMenuHeight={250}
-                classNames={{
-                    control: () => "bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 rounded-lg",
-                    singleValue: () => "!text-gray-900 dark:!text-white", 
-                    input: () => "text-gray-900 dark:text-white",
-                    placeholder: () => "text-gray-500 dark:text-gray-400",
-                    menu: () => "!bg-gray-50 dark:!bg-slate-700 shadow-lg border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden",
-                    menuList: () => "py-1 !bg-gray-50 dark:!bg-slate-700",
-                    option: ({ isFocused, isSelected }) => 
-                        `${isSelected ? "!bg-blue-500 !text-white" : isFocused ? "!bg-gray-200 dark:!bg-slate-600 !text-gray-900 dark:!text-white" : "!text-gray-900 dark:!text-white"} cursor-pointer px-3 py-2`
-                }}
-                styles={{
-                    control: (base) => ({
-                        ...base,
-                        backgroundColor: 'transparent',
-                        minHeight: '42px',
-                        boxShadow: 'none',
-                        '&:hover': { borderColor: '#9ca3af' }
-                    }),
-                    menu: (base) => ({
-                        ...base,
-                        zIndex: 9999,
-                        backgroundColor: 'transparent'
-                    }),
-                    menuList: (base) => ({
-                        ...base,
-                        backgroundColor: 'transparent'
-                    }),
-                    option: (base) => ({
-                        ...base,
-                        backgroundColor: 'transparent'
-                    }),
-                    menuPortal: (base) => ({
-                        ...base,
-                        zIndex: 9999
-                    })
-                }}
+            <input 
+              type="text" 
+              placeholder="Enter category..."
+              className="w-full p-2.5 border rounded-lg bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
             />
           </div>
 
